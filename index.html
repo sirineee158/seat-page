@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Seat Selection</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        text-align: center;
+      }
+
+      h2 {
+        color: #00629b;
+      }
+
+      .screen {
+        background: #00629b;
+        color: white;
+        padding: 10px;
+        width: 320px;
+        margin: 20px auto;
+        border-radius: 6px;
+        font-weight: bold;
+      }
+
+      .row {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+
+      .seat {
+        width: 26px;
+        height: 26px;
+        background: #7fb3d5;
+        margin: 3px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .seat.selected {
+        background: #f39c12;
+      }
+
+      .seat.taken {
+        background: #b0b0b0;
+        cursor: not-allowed;
+      }
+
+      .seat.guest {
+        background: #34495e;
+        cursor: not-allowed;
+      }
+
+      .aisle {
+        width: 30px;
+      }
+
+      .legend {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 15px;
+        font-size: 14px;
+      }
+
+      .legend div {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .box {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+      }
+
+      button {
+        background: #00629b;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #004e7a;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Choose Your Seat</h2>
+
+    <div class="screen">STAGE / SCREEN</div>
+
+    <div id="seats"></div>
+
+    <div class="legend">
+      <div>
+        <div class="box" style="background: #7fb3d5"></div>
+        Available
+      </div>
+      <div>
+        <div class="box" style="background: #f39c12"></div>
+        Selected
+      </div>
+      <div>
+        <div class="box" style="background: #b0b0b0"></div>
+        Taken
+      </div>
+      <div>
+        <div class="box" style="background: #34495e"></div>
+        Guests
+      </div>
+    </div>
+
+    <p><strong>Selected seat:</strong> <span id="chosenSeat">None</span></p>
+
+    <input type="hidden" id="seatInput" />
+
+    <button onclick="confirmSeat()">Confirm Seat</button>
+
+    <script>
+      const rows = 9;
+      const seatsPerSide = 8;
+
+      // Seats already taken (saved automatically)
+      let takenSeats = JSON.parse(localStorage.getItem("takenSeats")) || [];
+      let selectedSeat = null;
+
+      const seatsDiv = document.getElementById("seats");
+
+      for (let r = 1; r <= rows; r++) {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "row";
+
+        for (let s = 1; s <= seatsPerSide; s++) {
+          rowDiv.appendChild(createSeat(`R${r}-L${s}`, r === 1));
+        }
+
+        const aisle = document.createElement("div");
+        aisle.className = "aisle";
+        rowDiv.appendChild(aisle);
+
+        for (let s = 1; s <= seatsPerSide; s++) {
+          rowDiv.appendChild(createSeat(`R${r}-R${s}`, r === 1));
+        }
+
+        seatsDiv.appendChild(rowDiv);
+      }
+
+      function createSeat(label, isGuestRow) {
+        const seat = document.createElement("div");
+        seat.className = "seat";
+
+        if (isGuestRow) {
+          seat.classList.add("guest");
+          return seat;
+        }
+
+        if (takenSeats.includes(label)) {
+          seat.classList.add("taken");
+        }
+
+        seat.onclick = () => {
+          if (seat.classList.contains("taken")) return;
+
+          document
+            .querySelectorAll(".seat")
+            .forEach((s) => s.classList.remove("selected"));
+          seat.classList.add("selected");
+          selectedSeat = label;
+          document.getElementById("chosenSeat").innerText = label;
+        };
+
+        return seat;
+      }
+
+      function confirmSeat() {
+        if (!selectedSeat) {
+          alert("Please select a seat.");
+          return;
+        }
+
+        takenSeats.push(selectedSeat);
+        localStorage.setItem("takenSeats", JSON.stringify(takenSeats));
+
+        // Pass seat to Google Form
+        const formURL =
+          "https://docs.google.com/forms/d/e/1FAIpQLSfSllT4wNmrdi3Kntrq8VxcYG6usRbWgqnzznjvvlwi6bVjYQ/viewform";
+        const seatEntry = "entry.1284680943";
+
+        window.location.href = `${formURL}?${seatEntry}=${selectedSeat}`;
+      }
+    </script>
+  </body>
+</html>
