@@ -122,37 +122,56 @@
 
     <p><strong>Selected seat:</strong> <span id="chosenSeat">None</span></p>
 
-    <input type="hidden" id="seatInput" />
-
     <button onclick="confirmSeat()">Confirm Seat</button>
 
     <script>
       const rows = 9;
       const seatsPerSide = 8;
-
-      // Seats already taken (saved automatically)
-      let takenSeats = JSON.parse(localStorage.getItem("takenSeats")) || [];
       let selectedSeat = null;
-
       const seatsDiv = document.getElementById("seats");
 
-      for (let r = 1; r <= rows; r++) {
-        const rowDiv = document.createElement("div");
-        rowDiv.className = "row";
+      // 1️⃣ URL of your Google Apps Script Web App
+      const SHEET_URL =
+        "https://script.google.com/macros/s/AKfycbwyTezWYC2sX5B8oiAoGdi6WcAUHGGKk8H3cka1VjjvNONcAyVgnCJtBGBegk7bry40gA/exec";
 
-        for (let s = 1; s <= seatsPerSide; s++) {
-          rowDiv.appendChild(createSeat(`R${r}-L${s}`, r === 1));
+      // 2️⃣ Load taken seats from sheet in real-time
+      let takenSeats = [];
+
+      async function loadTakenSeats() {
+        try {
+          const res = await fetch(SHEET_URL + "?action=get");
+          const data = await res.json();
+          takenSeats = data.taken || [];
+          renderSeats();
+        } catch (err) {
+          console.error("Error loading taken seats:", err);
+          // fallback: use localStorage if sheet fails
+          takenSeats = JSON.parse(localStorage.getItem("takenSeats")) || [];
+          renderSeats();
         }
+      }
 
-        const aisle = document.createElement("div");
-        aisle.className = "aisle";
-        rowDiv.appendChild(aisle);
+      // 3️⃣ Create seats visually
+      function renderSeats() {
+        seatsDiv.innerHTML = ""; // clear
+        for (let r = 1; r <= rows; r++) {
+          const rowDiv = document.createElement("div");
+          rowDiv.className = "row";
 
-        for (let s = 1; s <= seatsPerSide; s++) {
-          rowDiv.appendChild(createSeat(`R${r}-R${s}`, r === 1));
+          for (let s = 1; s <= seatsPerSide; s++) {
+            rowDiv.appendChild(createSeat(`R${r}-L${s}`, r === 1));
+          }
+
+          const aisle = document.createElement("div");
+          aisle.className = "aisle";
+          rowDiv.appendChild(aisle);
+
+          for (let s = 1; s <= seatsPerSide; s++) {
+            rowDiv.appendChild(createSeat(`R${r}-R${s}`, r === 1));
+          }
+
+          seatsDiv.appendChild(rowDiv);
         }
-
-        seatsDiv.appendChild(rowDiv);
       }
 
       function createSeat(label, isGuestRow) {
@@ -164,9 +183,7 @@
           return seat;
         }
 
-        if (takenSeats.includes(label)) {
-          seat.classList.add("taken");
-        }
+        if (takenSeats.includes(label)) seat.classList.add("taken");
 
         seat.onclick = () => {
           if (seat.classList.contains("taken")) return;
@@ -182,22 +199,30 @@
         return seat;
       }
 
-      function confirmSeat() {
+      // 4️⃣ Confirm seat → send to sheet + go to Google Form
+      async function confirmSeat() {
         if (!selectedSeat) {
           alert("Please select a seat.");
           return;
         }
 
-        takenSeats.push(selectedSeat);
-        localStorage.setItem("takenSeats", JSON.stringify(takenSeats));
+        try {
+          await fetch(SHEET_URL + `?action=add&seat=${selectedSeat}`);
+          takenSeats.push(selectedSeat);
+          localStorage.setItem("takenSeats", JSON.stringify(takenSeats));
+        } catch (err) {
+          console.error("Error saving seat:", err);
+        }
 
-        // Pass seat to Google Form
+        // Google Form
         const formURL =
           "https://docs.google.com/forms/d/e/1FAIpQLSfSllT4wNmrdi3Kntrq8VxcYG6usRbWgqnzznjvvlwi6bVjYQ/viewform";
         const seatEntry = "entry.1284680943";
-
         window.location.href = `${formURL}?${seatEntry}=${selectedSeat}`;
       }
+
+      // 5️⃣ Initial load
+      loadTakenSeats();
     </script>
   </body>
 </html>
